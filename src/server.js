@@ -284,6 +284,12 @@ export function createApplication(config) {
         json(response, 200, { ok: true });
         return;
       }
+      const jobCancelPath = /^\/api\/jobs\/([a-zA-Z0-9_-]+)\/cancel$/.exec(pathname);
+      if (jobCancelPath && request.method === 'POST') {
+        await readJson(request, true);
+        json(response, 200, { job: scheduler.cancelJob(jobCancelPath[1]) });
+        return;
+      }
       throw new HttpError(404, '接口不存在。');
     }
 

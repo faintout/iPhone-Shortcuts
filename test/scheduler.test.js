@@ -863,3 +863,46 @@ test('未同步年份不会误发调休计划，完整闰年数据同步后可�
   assert.equal(s.getHolidayCalendar('2028-02').days.length, 29);
   assert.equal(s.poll().shouldRun, true);
 });
+
+test('已下发及待领取的打卡任务支持撤销，阻止已撤销任务的回报，释放轮询锁', (t) => {
+  const { scheduler: s, at } = fixture(t);
+  at('2026-10-14T01:00:00Z');
+  s.createSchedule(schedule);
+  const claim = s.poll();
+  assert.equal(claim.shouldRun, true);
+  assert.equal(s.getState().jobs[0].status, 'delivered');
+
+  // 参数与非法状态校验
+  assert.throws(() => s.cancelJob(''), { status: 400 });
+  assert.throws(() => s.cancelJob('non-existent-id'), { status: 404 });
+
+  // 撤销已下发任务
+  const cancelled = s.cancelJob(claim.jobId);
+  assert.equal(cancelled.status, 'cancelled');
+  assert.equal(cancelled.error, '打卡任务已手动撤销');
+  assert.ok(cancelled.finishedAt);
+  assert.equal(s.getState().jobs[0].status, 'cancelled');
+
+  // 幂等撤销已撤销任务
+  const idempotent = s.cancelJob(claim.jobId);
+  assert.equal(idempotent.status, 'cancelled');
+
+  // 阻止手机回报已撤销的任务
+  assert.throws(() => s.ack(claim), { status: 409, message: '任务已撤销，不再接受回报' });
+  assert.equal(s.getState().jobs[0].status, 'cancelled');
+
+  // 撤销后 poll 锁已释放，可以立即打卡并领取新任务
+  const manualJob = s.trigger({ delaySeconds: 0 });
+  assert.equal(manualJob.status, 'pending');
+  // 待领取手动任务也可被撤销
+  const cancelledManual = s.cancelJob(manualJob.id);
+  assert.equal(cancelledManual.status, 'cancelled');
+
+  // 重新发起立即打卡，并测试完成后不可撤销
+  s.trigger({ delaySeconds: 0 });
+  const manualClaim = s.poll();
+  assert.equal(manualClaim.shouldRun, true);
+  s.ack(manualClaim);
+  assert.equal(s.getState().jobs[0].status, 'completed');
+  assert.throws(() => s.cancelJob(manualClaim.jobId), { status: 409, message: '打卡已完成，无法撤销' });
+});

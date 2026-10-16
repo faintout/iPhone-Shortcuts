@@ -411,6 +411,7 @@ export class Scheduler {
       job = this.db.prepare('SELECT id, status, ackHash, date FROM jobs WHERE id = ?').get(body.jobId);
       if (!job || job.ackHash !== tokenHash(body.ackToken)) throw new ServiceError(403, '任务回报凭据无效');
     }
+    if (job.status === 'cancelled') throw new ServiceError(409, '任务已撤销，不再接受回报');
     if (job.status === 'failed') throw new ServiceError(409, '任务已失败，不再接受回报');
     if (!['delivered', 'unknown', 'completed'].includes(job.status)) throw new ServiceError(409, '任务尚未下发');
     const log = callbackJson == null ? null : typeof callbackJson === 'string' ? callbackJson : JSON.stringify(callbackJson, null, 2);
@@ -418,6 +419,21 @@ export class Scheduler {
       .run(this.clock().toISOString(), log, job.id);
     this.skipPendingSchedules(this.localTime().date);
     return { ok: true };
+  }
+
+  cancelJob(id) {
+    if (typeof id !== 'string' || !id) throw new ServiceError(400, '任务 ID 无效');
+    this.expireDeliveredJobs();
+    const job = this.db.prepare('SELECT id, status FROM jobs WHERE id = ?').get(id);
+    if (!job) throw new ServiceError(404, '任务不存在');
+    if (job.status === 'completed') throw new ServiceError(409, '打卡已完成，无法撤销');
+    if (job.status === 'failed') throw new ServiceError(409, '任务已失败，无法撤销');
+    if (job.status === 'skipped') throw new ServiceError(409, '任务已过期，无法撤销');
+    if (job.status === 'cancelled') return this.db.prepare(`SELECT ${visibleJobColumns} FROM jobs WHERE id = ?`).get(id);
+    const now = this.clock().toISOString();
+    this.db.prepare("UPDATE jobs SET status = 'cancelled', finishedAt = ?, error = ? WHERE id = ?")
+      .run(now, '打卡任务已手动撤销', id);
+    return this.db.prepare(`SELECT ${visibleJobColumns} FROM jobs WHERE id = ?`).get(id);
   }
 
   async tick() {

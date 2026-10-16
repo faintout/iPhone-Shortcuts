@@ -6,6 +6,7 @@ const statusLabels = {
   delivered: ['已下发，等待回报', 'delivered'],
   completed: ['打卡完成', 'completed'],
   failed: ['打卡失败', 'failed'],
+  cancelled: ['已撤销', 'cancelled'],
   unknown: ['未收到手机回报', 'unknown'],
   skipped: ['已过期未执行', 'skipped'],
 };
@@ -131,6 +132,23 @@ function readDelayRange() {
   return { delayMinSeconds: Number(min.value), delayMaxSeconds: Number(max.value) };
 }
 
+async function cancelJob(job, button) {
+  if (!window.confirm(`确认撤销“${job.scheduleName || '打卡任务'}”？撤销后手机将不再回报此次打卡。`)) return;
+  button.disabled = true;
+  const label = button.textContent;
+  button.textContent = '正在撤销…';
+  try {
+    await api(`/api/jobs/${encodeURIComponent(job.id)}/cancel`, { method: 'POST' });
+    toast('打卡任务已撤销');
+    await refreshAfterWrite();
+  } catch (error) {
+    showError('page-error', error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
+  }
+}
+
 function renderToday(jobs) {
   const list = $('today-list');
   list.textContent = '';
@@ -142,7 +160,12 @@ function renderToday(jobs) {
   jobs.sort((a, b) => a.plannedTime.localeCompare(b.plannedTime)).forEach((job) => {
     const row = element('div', 'today-row');
     const info = element('div', 'today-info');
-    info.append(element('strong', '', job.scheduleName || '定时任务'), element('span', 'small-text muted', describeDelay(job.delaySeconds)), statusBadge(job.status));
+    const statusWrap = element('div', 'today-status-wrap');
+    statusWrap.append(statusBadge(job.status));
+    if (job.status === 'delivered' || job.status === 'pending') {
+      statusWrap.append(actionButton('撤销', 'danger-text cancel-job-button', (event) => cancelJob(job, event.currentTarget)));
+    }
+    info.append(element('strong', '', job.scheduleName || '定时任务'), element('span', 'small-text muted', describeDelay(job.delaySeconds)), statusWrap);
     row.append(element('time', 'planned-time', job.plannedTime), info);
     list.append(row);
   });
@@ -197,7 +220,12 @@ function renderHistory(jobs) {
     const info = element('div', 'history-info');
     info.append(element('strong', '', job.source === 'manual' ? '立即打卡' : (job.scheduleName || '定时任务')), element('span', 'small-text muted', `${job.source === 'manual' ? '手动登记' : '定时计划'} · ${describeDelay(job.delaySeconds)}`));
     const status = element('div', 'history-status');
-    status.append(statusBadge(job.status));
+    const statusWrap = element('div', 'history-status-wrap');
+    statusWrap.append(statusBadge(job.status));
+    if (job.status === 'delivered' || job.status === 'pending') {
+      statusWrap.append(actionButton('撤销', 'danger-text cancel-job-button', (event) => cancelJob(job, event.currentTarget)));
+    }
+    status.append(statusWrap);
     if (job.error) status.append(element('p', 'job-error', job.error));
     const log = element('div', 'history-log');
     log.append(element('span', 'history-log-label small-text muted', '运行日志'), element('pre', 'job-log', job.callbackJson || '暂无运行日志'));

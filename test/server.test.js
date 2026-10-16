@@ -346,3 +346,36 @@ test('HTTP计划开关回填：周末补班可领取、关闭延时下发0，节
   assert.equal(next.shouldRun, true);
   assert.ok(next.delaySeconds >= 20 && next.delaySeconds <= 50);
 });
+
+test('HTTP接口支持撤销已下发打卡任务，并校验错误状态', async (t) => {
+  const { app, request } = await fixture(t);
+  app.scheduler.clock = () => new Date('2026-10-14T01:00:00Z');
+  await request('/api/trigger', { method: 'POST', body: { delaySeconds: 0 } });
+  const claim = await (await request('/api/device/poll', { method: 'POST' })).json();
+  assert.equal(claim.shouldRun, true);
+
+  // 撤销不存在的任务返回 404
+  const notFound = await request('/api/jobs/not-exist-id/cancel', { method: 'POST' });
+  assert.equal(notFound.status, 404);
+
+  // 成功撤销已下发任务
+  const cancelRes = await request(`/api/jobs/${claim.jobId}/cancel`, { method: 'POST' });
+  assert.equal(cancelRes.status, 200);
+  const { job } = await cancelRes.json();
+  assert.equal(job.status, 'cancelled');
+
+  // 查询状态接口确认
+  const state = await (await request('/api/state')).json();
+  assert.equal(state.jobs[0].status, 'cancelled');
+
+  // 手机回报已撤销任务返回 409
+  const ackRes = await request('/api/device/ack', { method: 'POST', body: claim });
+  assert.equal(ackRes.status, 409);
+
+  // 再次打卡并完成，测试已完成任务无法撤销
+  await request('/api/trigger', { method: 'POST', body: { delaySeconds: 0 } });
+  const claim2 = await (await request('/api/device/poll', { method: 'POST' })).json();
+  await request('/api/device/ack', { method: 'POST', body: claim2 });
+  const cancelCompleted = await request(`/api/jobs/${claim2.jobId}/cancel`, { method: 'POST' });
+  assert.equal(cancelCompleted.status, 409);
+});
