@@ -1,0 +1,14 @@
+{
+  "name": "iphonefast",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "供 iPhone 快捷指令主动拉取任务的打卡调度服务",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "test": "node --test"
+  }
+}

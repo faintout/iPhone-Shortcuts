@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f7f9" />
+    <title>iPhone 快捷指令控制台</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div id="loading-screen" class="loading-screen" role="status">正在连接控制台…</div>
+
+    <main id="login-screen" class="login-screen" hidden>
+      <section class="login-card">
+        <div class="brand-mark" aria-hidden="true">↗</div>
+        <p class="eyebrow">IPHONE FAST</p>
+        <h1>快捷指令控制台</h1>
+        <p class="muted">安排打卡时间，手机主动查询待办并运行快捷指令。</p>
+        <form id="login-form">
+          <label for="password">管理密码</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+          <p id="login-error" class="field-error" role="alert" hidden></p>
+          <button id="login-button" type="submit" class="button primary full-width">登录控制台</button>
+        </form>
+        <p class="login-note">由手机定时自动化发起查询，打开 App 后回报完成。</p>
+      </section>
+    </main>
+
+    <div id="app-screen" hidden>
+      <header class="topbar">
+        <div class="topbar-inner">
+          <a class="brand" href="/" aria-label="iPhone Fast 控制台首页"><span class="brand-mark small" aria-hidden="true">↗</span><span>iPhone <strong>Fast</strong></span></a>
+          <div class="topbar-actions"><span id="timezone-label" class="timezone">Asia/Shanghai</span><button id="logout-button" class="button text-button" type="button">退出登录</button></div>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="page-heading">
+          <h1>打卡时间管理</h1>
+        </section>
+
+        <div class="notice"><span class="notice-icon" aria-hidden="true">i</span><p><strong>手机查询 → 领取待办 → 延时 → 打开微信 → 回报完成。</strong>“打卡完成”以手机在打开 App 后的回报为准。手机查询时间需在“自动化”中设置；随机计划需在窗口内主动查询，实际执行时间受查询频率影响。</p></div>
+        <p id="page-error" class="page-error" role="alert" hidden></p>
+
+        <section class="stats" aria-label="任务概览">
+          <div class="stat"><span class="stat-label">今日待领取</span><strong id="pending-count">—</strong><span class="stat-caption">等待手机在有效时间内查询</span></div>
+          <div class="stat"><span class="stat-label">今日打卡完成</span><strong id="completed-count">—</strong><span class="stat-caption">手机已回报打开 App</span></div>
+          <div class="stat"><span class="stat-label">已启用计划</span><strong id="enabled-count">—</strong><span id="server-time" class="stat-caption">正在同步服务器时间</span></div>
+        </section>
+
+        <div class="content-grid">
+          <section class="panel today-panel" aria-labelledby="today-title">
+            <div class="panel-heading"><div><h2 id="today-title">今日任务</h2><p id="today-date" class="muted small-text">时间为抽中的最早可领取分钟</p></div><span id="today-count" class="count-badge">0</span></div>
+            <div id="today-list" class="today-list"></div>
+          </section>
+
+          <section class="panel schedules-panel" aria-labelledby="schedules-title">
+            <div class="panel-heading"><div><h2 id="schedules-title">定时计划</h2><p class="muted small-text">随机抽取最早领取时间；窗口结束后过期</p></div><button id="add-schedule-button" class="button secondary compact" type="button">＋ 新建计划</button></div>
+            <div id="schedules-list" class="schedules-list"></div>
+          </section>
+        </div>
+
+        <div class="tools-grid">
+          <section class="panel holidays-panel" aria-labelledby="holidays-title">
+            <div class="panel-heading"><div><h2 id="holidays-title">节假日月历</h2><p class="muted small-text">查看上班、休息与调休安排</p></div><button id="sync-holidays-button" class="button secondary compact" type="button">更新节假日信息</button></div>
+            <div class="calendar-toolbar"><label for="holiday-month">查看月份</label><input id="holiday-month" type="month" min="2000-01" max="2100-12" required /></div>
+            <div class="calendar-body">
+              <p id="holiday-summary" class="calendar-summary small-text"></p>
+              <table class="holiday-calendar" aria-labelledby="holidays-title"><thead><tr><th scope="col">一</th><th scope="col">二</th><th scope="col">三</th><th scope="col">四</th><th scope="col">五</th><th scope="col">六</th><th scope="col">日</th></tr></thead><tbody id="holiday-days"></tbody></table>
+              <div class="calendar-legend" aria-label="日历图例"><span class="holiday-type-0">上班</span><span class="holiday-type-1">周末</span><span class="holiday-type-2">节日</span><span class="holiday-type-3">调休放假</span><span class="holiday-type-4">补班</span></div>
+              <p id="holiday-sync-status" class="small-text muted" role="status">正在读取节假日信息…</p>
+              <p id="holiday-error" class="field-error" role="alert" hidden></p>
+            </div>
+          </section>
+
+          <div class="tools-sidebar">
+            <section class="panel delay-settings-panel" aria-labelledby="delay-settings-title">
+              <div class="panel-heading"><h2 id="delay-settings-title">随机等待设置</h2></div>
+              <div class="trigger-area">
+                <fieldset class="delay-field trigger-delay"><legend>随机等待（秒）</legend><div class="delay-range"><div><label for="trigger-delay-min">最小秒数</label><input id="trigger-delay-min" type="number" min="0" max="3600" step="1" value="0" required /></div><span aria-hidden="true">—</span><div><label for="trigger-delay-max">最大秒数</label><input id="trigger-delay-max" type="number" min="0" max="3600" step="1" value="0" required /></div></div></fieldset>
+                <div class="trigger-delay-toolbar"><button id="save-trigger-delay-button" class="button secondary compact" type="button" disabled>保存等待时长</button></div>
+              </div>
+            </section>
+
+            <section class="panel trigger-panel" aria-labelledby="trigger-title">
+              <div class="panel-heading"><div><h2 id="trigger-title">立即打卡</h2><p class="muted small-text">登记一次任务，等待手机主动领取</p></div></div>
+              <div class="trigger-area">
+                <div class="trigger-actions"><button id="trigger-button" class="button primary trigger-button" type="button" disabled>立即打卡（含定时）</button><button id="trigger-now-button" class="button secondary trigger-button" type="button" disabled>立即打卡（不含定时）</button></div>
+                <p>含定时：按随机等待设置随机等待；不含定时：领取后直接执行。<br />登记后 5 分钟内需领取，无法远程唤醒手机。</p>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <section class="panel history-panel" aria-labelledby="history-title">
+          <div class="panel-heading"><div><h2 id="history-title">最近打卡记录</h2><p class="muted small-text">查看执行状态和手机回传的运行日志</p></div><button id="refresh-button" class="button text-button compact" type="button">刷新</button></div>
+          <div id="history-list" class="history-list"></div>
+        </section>
+        <footer class="page-footer"><span>时间按服务器时区显示</span><span id="refresh-status" role="status">点击刷新获取最新状态</span></footer>
+      </main>
+    </div>
+
+    <div id="schedule-modal" class="schedule-modal" hidden>
+    <div id="schedule-dialog" class="schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <form id="schedule-form">
+        <div class="dialog-heading"><div><p class="eyebrow">定时打卡</p><h2 id="dialog-title">新建计划</h2></div><button id="close-dialog-button" class="close-button" type="button" aria-label="关闭计划编辑">×</button></div>
+        <label for="schedule-name">计划名称</label>
+        <input id="schedule-name" name="name" type="text" placeholder="例如：上午打卡" maxlength="60" required />
+        <div class="time-fields"><div><label for="start-time">开始时间</label><input id="start-time" name="startTime" type="time" value="09:00" required /></div><div><label for="end-time">结束时间</label><input id="end-time" name="endTime" type="time" value="09:10" required /></div></div>
+        <p class="form-hint">随机抽取最早可领取分钟，手机需在该分钟至窗口结束前主动查询。起止相同为固定分钟，不支持跨天。实际执行时间受手机查询频率影响。</p>
+        <label class="enabled-field schedule-option"><input id="schedule-use-delay" name="useDelay" type="checkbox" checked /><span>使用延迟参数</span></label>
+        <p class="form-hint">统一使用页面“随机等待设置”中已保存的秒数区间；取消勾选后不等待，领取即执行。</p>
+        <fieldset class="days-fieldset"><legend>重复日期</legend><div class="day-options">
+          <label class="day-option"><input type="checkbox" name="days" value="1" checked /><span>一</span></label>
+          <label class="day-option"><input type="checkbox" name="days" value="2" checked /><span>二</span></label>
+          <label class="day-option"><input type="checkbox" name="days" value="3" checked /><span>三</span></label>
+          <label class="day-option"><input type="checkbox" name="days" value="4" checked /><span>四</span></label>
+          <label class="day-option"><input type="checkbox" name="days" value="5" checked /><span>五</span></label>
+          <label class="day-option"><input type="checkbox" name="days" value="6" /><span>六</span></label>
+          <label class="day-option"><input type="checkbox" name="days" value="7" /><span>日</span></label>
+        </div></fieldset>
+        <label class="enabled-field"><input id="schedule-holiday-aware" name="holidayAware" type="checkbox" /><span>启用调休补班</span></label>
+        <p class="form-hint">开启后，补班日即使在周末也执行；周末、节假日和调休放假跳过；普通工作日仍按重复日期执行。</p>
+        <label class="enabled-field schedule-option"><input id="schedule-enabled" name="enabled" type="checkbox" checked /><span>启用此计划</span></label>
+        <p id="schedule-error" class="field-error" role="alert" hidden></p>
+        <div class="dialog-actions"><button id="cancel-schedule-button" class="button secondary" type="button">取消</button><button id="save-schedule-button" class="button primary" type="submit">保存计划</button></div>
+      </form>
+    </div>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+services:
+  iphonefast:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 2580
+      DATA_DIR: /app/data
+    ports:
+      - "127.0.0.1:2580:2580"
+    volumes:
+      - iphonefast-data:/app/data
+
+volumes:
+  iphonefast-data:

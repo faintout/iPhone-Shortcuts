@@ -1,0 +1,143 @@
+/*
+Web Actions
+*/
+
+// [Doc]: [URLs] Open URL: Open URL in default browser.
+action openURL(text url: 'WFInput') {
+	"Show-WFInput": true
+}
+
+// [Doc]: [URLs] Expand URL: Get the expanded version of a URL. For instance, returns the full URL for a short URL, or the URL which a URL immediately redirects to, etc.
+action 'url.expand' expandURL(text url: 'URL')
+
+// [Doc]: [URLs] Get URLs: Get URLs from `input`.
+action 'detect.link' getURLs(text input: 'WFInput'): array
+
+enum URLDetail {
+	'Scheme',
+	'User',
+	'Password',
+	'Host',
+	'Port',
+	'Path',
+	'Query',
+	'Fragment',
+}
+
+// [Doc]: [URLs] Get URL Detail: Get a detail about a URL.
+action 'geturlcomponent' getURLDetail(text url: 'WFURL', URLDetail detail: 'WFURLComponent')
+
+// [Doc]: [URLs] Get URL Headers: Get the headers from a URL.
+action 'url.getheaders' getURLHeaders(text url: 'WFInput')
+
+// [Doc]: [URLs] URL Encode: Encode text for a URL.
+action default urlEncode(text input: 'WFInput'): text {
+	"WFEncodeMode": "Encode"
+}
+
+// [Doc]: [URLs] URL Decode: Decode text from URL encoding.
+action 'urlencode' urlDecode(text input: 'WFInput'): text {
+	"WFEncodeMode": "Decode"
+}
+
+// [Doc]: [URLs] Open X-Callback URL
+action 'openxcallbackurl' openXCallbackURL(text url: 'WFXCallbackURL')
+
+// [Doc]: [Safari] Get Current URL: Get current URL in Safari.
+action 'safari.geturl' getCurrentURL()
+
+// [Doc]: [Safari] Show Webpage: Show webpage using Safari.
+action showWebpage(text url: 'WFURL', bool ?useReader: 'WFEnterSafariReader')
+
+// [Doc]: [Safari] Run JavaScript on Webpage: Run some custom JavaScript on the current webpage in Safari.
+action runJavaScriptOnWebpage(text javascript: 'WFJavaScript')
+
+enum webpageDetail {
+	'Page Contents',
+	'Page Selection',
+	'Page URL',
+	'Name',
+}
+
+// [Doc]: [Safari] Get Webpage Detail: Get a detail about a provided webpage.
+action 'properties.safariwebpage' getWebPageDetail(variable webpage: 'WFInput', webpageDetail detail: 'WFContentItemPropertyName')
+
+enum searchEngine {
+	'Amazon',
+	'Bing',
+	'DuckDuckGo',
+	'eBay',
+	'Google',
+	'Reddit',
+	'Twitter',
+	'Yahoo!',
+	'YouTube',
+}
+
+// [Doc]: [Safari] Search Web: Search the web using a provided search engine and query.
+action searchWeb(searchEngine engine: 'WFSearchWebDestination', text query: 'WFInputText')
+
+// [Doc]: [Safari] Get Webpage Contents: Get contents of Webpage from Safari.
+action getWebpageContents(text url: 'WFInput')
+
+// [Doc]: [Giphy] Get GIFs from Giphy: Gets a number of GIFs from Giphy for a search query.
+action default 'giphy' getGifs(text query: 'WFGiphyQuery', number ?gifs: 'WFGiphyLimit' = 1) {
+	"WFGiphyShowPicker": false
+}
+
+// [Doc]: [Giphy] Search Giphy: Gets GIFs from Giphy for a search query.
+action 'giphy' searchGiphy(text query: 'WFGiphyQuery')
+
+// [Doc]: [Articles] Get Article: Get article from webpage.
+action getArticle(text webpage: 'WFWebPage')
+
+// [Doc]: [Articles] Get Article Detail: Get a detail about an article.
+action 'properties.articles' getArticleDetail(variable article: 'WFInput', text detail: 'WFContentItemPropertyName')
+
+// [Doc]: [RSS] Get RSS: Get RSS feed contents at URL. Limited by number of items.
+action 'rss' getRSS(number items: 'WFRSSItemQuantity', text url: 'WFRSSFeedURL')
+
+// [Doc]: [RSS] Get RSS Feeds: Get feeds from multiple URLs.
+action 'rss.extract' getRSSFeeds(text urls: 'WFURLs')
+
+enum HTTPMethod {
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE'
+}
+
+// [Doc]: [HTTP] Download URL: Download the contents of a URL.
+action default downloadURL(text url: 'WFURL', dictionary! ?headers: 'WFHTTPHeaders'): variable {
+	"WFHTTPMethod": "GET"
+}
+
+// [Doc]: [HTTP] Form Request: Send a `method` request to `url` with `body` and optional `headers.
+action 'downloadurl' formRequest(
+    text url: 'WFURL',
+    HTTPMethod ?method: 'WFHTTPMethod',
+    dictionary! ?body: 'WFFormValues',
+    dictionary! ?headers: 'WFHTTPHeaders',
+) {
+    "WFHTTPBodyType": "Form"
+}
+
+// [Doc]: [HTTP] JSON Request: Send a `method` JSON request to `url` with `body` and optional `headers.
+action 'downloadurl' jsonRequest(
+    text url: 'WFURL',
+    HTTPMethod ?method: 'WFHTTPMethod',
+    dictionary! ?body: 'WFJSONValues',
+    dictionary! ?headers: 'WFHTTPHeaders',
+) {
+    "WFHTTPBodyType": "JSON"
+}
+
+// [Doc]: [HTTP] File Request: Send a `method` file request to `url` with `body` and optional `headers.
+action 'downloadurl' fileRequest(
+    text url: 'WFURL',
+    HTTPMethod ?method: 'WFHTTPMethod',
+    variable ?body: 'WFRequestVariable',
+    dictionary! ?headers: 'WFHTTPHeaders',
+) {
+    "WFHTTPBodyType": "File"
+}
